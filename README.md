@@ -50,9 +50,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/pixelfed` - Data storage
-- `./rootfs/config/pixelfed` - Data storage
-- `./rootfs/data/db/mariadb/pixelfed` - Data storage
+- `./volumes/data/pixelfed` - Data storage
+- `./volumes/config/pixelfed` - Data storage
+- `./volumes/data/db/mariadb/pixelfed` - Data storage
 
 ## 🔐 Security
 
