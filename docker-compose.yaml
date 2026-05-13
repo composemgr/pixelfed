@@ -23,7 +23,7 @@ services:
       - "172.17.0.1:8080:80"
     environment:
       TZ: ${TZ:-America/New_York}
-      APP_NAME: ${APP_NAME:-Pixelfed}
+      APP_NAME: ${APP_ORG_NAME:-Pixelfed}
       APP_ENV: production
       APP_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
       APP_DEBUG: "false"
