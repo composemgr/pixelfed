@@ -17,6 +17,8 @@ services:
     logging: *default-logging
     networks:
       - pixelfed
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8080:80"
     environment:
@@ -43,14 +45,16 @@ services:
       MAIL_DRIVER: ${EMAIL_DRIVER:-log}
       MAIL_HOST: ${EMAIL_SERVER_HOST:-localhost}
       MAIL_PORT: ${EMAIL_SERVER_PORT:-1025}
-      MAIL_USERNAME: ${EMAIL_SERVER_USER:-""}
-      MAIL_PASSWORD: ${EMAIL_SERVER_PASS:-""}
+      MAIL_USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-""}
+      MAIL_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-""}
       MAIL_FROM_ADDRESS: ${EMAIL_SERVER_MAIL_FROM:-noreply@example.com}
       MAIL_ENCRYPTION: ${EMAIL_ENCRYPTION:-null}
       OPEN_REGISTRATION: ${OPEN_REGISTRATION:-false}
       ENFORCE_EMAIL_VERIFICATION: ${ENFORCE_EMAIL_VERIFICATION:-false}
       PHP_POST_MAX_SIZE: "512M"
       PHP_UPLOAD_MAX_FILE_SIZE: "512M"
+      CONTAINER_NAME: pixelfed-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/data/pixelfed:/var/www/storage
       - ./volumes/config/pixelfed:/var/www/bootstrap/cache
@@ -64,6 +68,22 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://pixelfed-app:80'
+      - 'cloudflare.hostname=pixelfed.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.pixelfed-app.entrypoints=http'
+      - 'traefik.http.routers.pixelfed-app-secure.tls=true'
+      - 'traefik.http.routers.pixelfed-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.pixelfed-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.pixelfed-app.middlewares=pixelfed-app-https-redirect'
+      - 'traefik.http.routers.pixelfed-app-secure.entrypoints=https'
+      - 'traefik.http.routers.pixelfed-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.pixelfed-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.pixelfed-app-secure.service=pixelfed-app'
+      - 'traefik.http.services.pixelfed-app.loadbalancer.server.port=80'
 
   pixelfed-db:
     image: mariadb:latest
@@ -79,6 +99,7 @@ services:
       MARIADB_USER: ${DB_USER_NAME:-pixelfed}
       MARIADB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
       MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
+      CONTAINER_NAME: pixelfed-db
     volumes:
       - ./volumes/data/db/mariadb/pixelfed:/var/lib/mysql
     healthcheck:
@@ -95,6 +116,8 @@ services:
     logging: *default-logging
     networks:
       - pixelfed
+    environment:
+      CONTAINER_NAME: pixelfed-redis
     volumes:
       - ./volumes/data/db/redis/pixelfed:/data
 
@@ -102,3 +125,7 @@ networks:
   pixelfed:
     name: pixelfed
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
