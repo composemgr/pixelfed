@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8080
 
+name: pixelfed
 x-logging: &default-logging
   driver: json-file
   options:
@@ -9,20 +10,55 @@ x-logging: &default-logging
 services:
   pixelfed:
     image: pixelfed/pixelfed:latest
+    pull_policy: always
     container_name: pixelfed-app
-    restart: unless-stopped
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
     logging: *default-logging
     networks:
       - pixelfed
     ports:
-      - "8080:80"
+      - "172.17.0.1:8080:80"
     environment:
       TZ: ${TZ:-America/New_York}
+      APP_NAME: ${APP_NAME:-Pixelfed}
+      APP_ENV: production
+      APP_KEY: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      APP_DEBUG: "false"
+      APP_URL: https://${BASE_HOST_NAME:-localhost}.${BASE_DOMAIN_NAME:-example.com}
+      APP_DOMAIN: ${BASE_HOST_NAME:-localhost}.${BASE_DOMAIN_NAME:-example.com}
+      ADMIN_DOMAIN: ${BASE_HOST_NAME:-localhost}.${BASE_DOMAIN_NAME:-example.com}
+      SESSION_DOMAIN: ${BASE_HOST_NAME:-localhost}.${BASE_DOMAIN_NAME:-example.com}
+      DB_CONNECTION: mysql
+      DB_HOST: pixelfed-db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_CREATE_DATABASE_NAME:-pixelfed}
+      DB_USERNAME: ${DB_USER_NAME:-pixelfed}
+      DB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_DRIVER: redis
+      REDIS_HOST: pixelfed-redis
+      REDIS_PORT: 6379
+      MAIL_DRIVER: ${EMAIL_DRIVER:-log}
+      MAIL_HOST: ${EMAIL_SERVER_HOST:-localhost}
+      MAIL_PORT: ${EMAIL_SERVER_PORT:-1025}
+      MAIL_USERNAME: ${EMAIL_SERVER_USER:-""}
+      MAIL_PASSWORD: ${EMAIL_SERVER_PASS:-""}
+      MAIL_FROM_ADDRESS: ${EMAIL_SERVER_MAIL_FROM:-noreply@example.com}
+      MAIL_ENCRYPTION: ${EMAIL_ENCRYPTION:-null}
+      OPEN_REGISTRATION: ${OPEN_REGISTRATION:-false}
+      ENFORCE_EMAIL_VERIFICATION: ${ENFORCE_EMAIL_VERIFICATION:-false}
+      PHP_POST_MAX_SIZE: "512M"
+      PHP_UPLOAD_MAX_FILE_SIZE: "512M"
     volumes:
-      - ./volumes/data/pixelfed:/data
-      - ./volumes/config/pixelfed:/config
+      - ./volumes/data/pixelfed:/var/www/storage
+      - ./volumes/config/pixelfed:/var/www/bootstrap/cache
     depends_on:
-      - pixelfed-db
+      pixelfed-db:
+        condition: service_healthy
+      pixelfed-redis:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
@@ -30,9 +66,10 @@ services:
       retries: 3
 
   pixelfed-db:
-    image: mariadb:11
+    image: mariadb:latest
+    pull_policy: always
     container_name: pixelfed-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - pixelfed
@@ -41,7 +78,7 @@ services:
       MARIADB_DATABASE: ${DB_CREATE_DATABASE_NAME:-pixelfed}
       MARIADB_USER: ${DB_USER_NAME:-pixelfed}
       MARIADB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
-      MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_root_password}
+      MARIADB_ROOT_PASSWORD: ${DB_ADMIN_PASS:-changeme_admin_password}
     volumes:
       - ./volumes/data/db/mariadb/pixelfed:/var/lib/mysql
     healthcheck:
@@ -50,6 +87,18 @@ services:
       timeout: 10s
       retries: 3
 
+  pixelfed-redis:
+    image: redis:alpine
+    pull_policy: always
+    container_name: pixelfed-redis
+    restart: always
+    logging: *default-logging
+    networks:
+      - pixelfed
+    volumes:
+      - ./volumes/data/db/redis/pixelfed:/data
+
 networks:
   pixelfed:
+    name: pixelfed
     external: false
