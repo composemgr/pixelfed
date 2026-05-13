@@ -42,7 +42,7 @@ services:
       QUEUE_DRIVER: redis
       REDIS_HOST: pixelfed-redis
       REDIS_PORT: 6379
-      MAIL_DRIVER: ${EMAIL_DRIVER:-log}
+      MAIL_MAILER: ${EMAIL_DRIVER:-log}
       MAIL_HOST: ${EMAIL_SERVER_HOST:-localhost}
       MAIL_PORT: ${EMAIL_SERVER_PORT:-1025}
       MAIL_USERNAME: ${EMAIL_SERVER_LOGIN_NAME:-""}
