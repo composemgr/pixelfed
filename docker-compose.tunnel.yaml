@@ -97,6 +97,12 @@ services:
     container_name: pixelfed-redis
     restart: always
     logging: *default-logging
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -q PONG']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - pixelfed
     environment:
